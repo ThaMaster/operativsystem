@@ -17,7 +17,6 @@ This sections contains what the next programming session should accomplish and g
 
 - Get a clear structure of how the LKM, daemons, sockets and clients should communicate.
 - Get a clear image of how the funcions in the LKM should be handled. Should they be implemented as Syscalls, use sockets or other implementations?
-- 
 
 ## Change log
 

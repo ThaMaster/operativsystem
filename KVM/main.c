@@ -3,10 +3,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
-
-#define INSERT _IOW('k', 'i', int32_t *)
-#define LOOKUP _IOR('k', 'l', int32_t *)
-#define REMOVE _IOW('k', 'r', int32_t *)
+#include "kvm.h"
 
 int main(void)
 {

@@ -7,10 +7,7 @@
 #include <linux/device.h>
 #include <linux/ioctl.h>
 #include <linux/err.h>
-
-#define INSERT _IOW('k', 'i', int32_t *)
-#define LOOKUP _IOR('k', 'l', int32_t *)
-#define REMOVE _IOW('k', 'r', int32_t *)
+#include "kvm.h"
 
 dev_t dev = 0;
 static struct class *kvm_class;
@@ -32,15 +29,6 @@ static struct file_operations fops =
     .open           = kvm_open,
     .unlocked_ioctl = kvm_ioctl,
     .release        = kvm_close,
-};
-
-/**
- * Storage for the key value store
- */
-struct KeyValuePair
-{
-    char key[32];
-    char *value;
 };
 
 static struct KeyValuePair **kvs;

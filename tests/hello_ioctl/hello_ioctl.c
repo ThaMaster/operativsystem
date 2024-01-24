@@ -14,8 +14,9 @@
 #define RD_VALUE _IOR('a', 'b', int32_t *)
 
 dev_t dev = 0;
-static struct class *dev_class;
-static struct cdev etx_cdev;
+static struct class *kvm_class;
+static struct cdev kvm_cdev;
+
 
 /**
  * Function prototypes
@@ -82,43 +83,44 @@ static long etx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 static int __init start(void)
 {
     printk(KERN_INFO "Starting module\n");
-    if ((alloc_chrdev_region(&dev, 0, 1, "etx_Dev")) < 0) {
+    if ((alloc_chrdev_region(&dev, 0, 1, "hello_Dev")) < 0) {
         printk(KERN_ERR "Cannot allocate major number.\n");
         return -1;
     }
+
     printk(KERN_INFO "Major = %d, Minor = %d\n", MAJOR(dev), MINOR(dev));
 
-    cdev_init(&etx_cdev, &fops);
+    cdev_init(&kvm_cdev, &fops);
 
-    if ((cdev_add(&etx_cdev, dev, 1)) < 0) {
+    if ((cdev_add(&kvm_cdev, dev, 1)) < 0) {
         printk(KERN_ERR "Cannot add the device to the system.\n");
         unregister_chrdev_region(dev, 1);
         return -1;
     }
 
-    if (IS_ERR(dev_class = class_create("etx_class"))) {
+    if (IS_ERR(kvm_class = class_create("hello_class"))) {
         printk(KERN_ERR "Cannot create the struct class.\n");
-        class_destroy(dev_class);
+        class_destroy(kvm_class);
         unregister_chrdev_region(dev, 1);
         return -1;
     }
 
-    if (IS_ERR(device_create(dev_class, NULL, dev, NULL, "etx_device"))) {
+    if (IS_ERR(device_create(kvm_class, NULL, dev, NULL, "hello_device"))) {
         printk(KERN_ERR "Cannot create the device 1.\n");
-        class_destroy(dev_class);
+        class_destroy(kvm_class);
         unregister_chrdev_region(dev, 1);
         return -1;
     }
-    
+
     printk(KERN_INFO "Divice driver inserted!\n");
     return 0;
 }
 
 static void __exit end(void)
 {
-    device_destroy(dev_class, dev);
-    class_destroy(dev_class);
-    cdev_del(&etx_cdev);
+    device_destroy(kvm_class, dev);
+    class_destroy(kvm_class);
+    cdev_del(&kvm_cdev);
     unregister_chrdev_region(dev, 1);
     printk(KERN_INFO "Exiting  module\n");
 }
@@ -127,6 +129,6 @@ module_init(start);
 module_exit(end);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Chrille/Ludvig");
+MODULE_AUTHOR("Christoffer / Ludvig");
 MODULE_DESCRIPTION("A ioctl module for handling communication between kernel and user level.\n");
 MODULE_VERSION("0.1");

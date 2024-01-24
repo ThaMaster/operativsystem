@@ -14,8 +14,8 @@
 int main(void) 
 {
     int fd;
-    printf("\n Opening Driver\n");
-    fd = open("/dev/etx_device", O_RDWR);
+    printf("\nOpening Driver\n");
+    fd = open("/dev/hello_device", O_RDWR);
     if(fd < 0) {
         printf("Cannot open device file...\n");
         return 0;

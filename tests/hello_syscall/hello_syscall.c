@@ -5,7 +5,7 @@
 #include "hello_syscall.h"
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Chrille");
+MODULE_AUTHOR("Christoffer / Ludvig");
 MODULE_DESCRIPTION("Syscall for printing Hello World to standard output\n");
 MODULE_VERSION("0.1");
 

@@ -17,15 +17,19 @@ int main(void)
 
     printf("Inserting KeyValuePair.\n");
     int32_t number = 255;
-    ioctl(fd, INSERT, (int32_t *)&number);
+    ioctl(fd, INSERT, (struct InputOutput *)&number);
     
     printf("Looking up entry.\n");
-    int32_t value;
-    ioctl(fd, LOOKUP, (int32_t *)&value);
+
+    struct InputOutput lookingIO;
+    struct KeyValuePair keyVal;
+    keyVal.key = "cringe";
+    lookingIO.kvp = keyVal;
+    ioctl(fd, LOOKUP, (struct InputOutput *)&lookingIO);
 
     printf("Removing KeyValuePair\n");
     int32_t cringe;
-    ioctl(fd, REMOVE, (int32_t *)&cringe);
+    ioctl(fd, REMOVE, (struct InputOutput *)&cringe);
 
     printf("Closing Driver\n");
     close(fd);

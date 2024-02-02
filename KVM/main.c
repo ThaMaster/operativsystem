@@ -1,9 +1,13 @@
+// gcc -std=c99 -Wall -o main.o main.c
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include "kvm.h"
+#include "kvm_ioctl.h"
 
 int main(void)
 {
@@ -16,20 +20,37 @@ int main(void)
     }
 
     printf("Inserting KeyValuePair.\n");
-    int32_t number = 255;
-    ioctl(fd, INSERT, (struct InputOutput *)&number);
+    struct InputOutput insertIO;
+    struct KeyValuePair insertPair;
+    insertPair.key = "cringe";
+    insertPair.value = calloc(7, sizeof(char));
+    insertPair.value = "hejsan";
+    insertIO.kvp = &insertPair;
+
+    ioctl(fd, INSERT, (struct InputOutput *)&insertIO);
     
     printf("Looking up entry.\n");
 
     struct InputOutput lookingIO;
-    struct KeyValuePair keyVal;
-    keyVal.key = "cringe";
-    lookingIO.kvp = keyVal;
-    ioctl(fd, LOOKUP, (struct InputOutput *)&lookingIO);
+    struct KeyValuePair lookPair;
+    lookPair.key = "cringe";
+    lookPair.value = calloc(7, sizeof(char));
+    lookingIO.kvp = &lookPair;
 
-    printf("Removing KeyValuePair\n");
-    int32_t cringe;
-    ioctl(fd, REMOVE, (struct InputOutput *)&cringe);
+    ioctl(fd, LOOKUP, (struct InputOutput *)&lookingIO);
+    if(lookingIO.status >= 0)
+        printf("%s\n", (char *)lookingIO.kvp->value);
+
+    struct InputOutput removeIO;
+    struct KeyValuePair removePair;
+    removePair.key = "cringe";
+    removePair.value = calloc(7, sizeof(char));
+    removeIO.kvp = &removePair;
+
+    ioctl(fd, REMOVE, (struct InputOutput *)&removeIO);
+
+    if(removeIO.status >= 0)
+        printf("Removing element: %s\n", (char *)removeIO.kvp->value);
 
     printf("Closing Driver\n");
     close(fd);

@@ -5,12 +5,6 @@
 #define LOOKUP _IOWR('k', 'l', struct InputOutput *)
 #define REMOVE _IOWR('k', 'r', struct InputOutput *)
 
-uint8_t kvm_hash(const char key[]);
-int kvm_init(void);
-struct KeyValuePair *kvm_lookup(const char[]);
-int kvm_remove(const char[]);
-int kvm_insert(struct KeyValuePair *);
-
 struct Bucket
 {
     struct KeyValuePair *value;
@@ -19,9 +13,15 @@ struct Bucket
 
 struct KeyValuePair
 {
-    char key[32];
+    char *key;
     void *value;
-    int size;
 };
+
+uint8_t kvm_hash(const char key[]);
+int kvm_init(void);
+struct KeyValuePair *kvm_lookup(const char[]);
+struct KeyValuePair *kvm_remove(const char[]);
+int kvm_insert(struct KeyValuePair *);
+void free_bucket(struct Bucket *);
 
 #endif

@@ -5,6 +5,7 @@
 #include <linux/fs.h>
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
+#include <linux/rwlock_types.h>
 #include "kvm.h"
 
 static int __init kvm_ioctl_init(void);
@@ -12,6 +13,9 @@ static void __exit kvm_exit(void);
 static int kvm_open(struct inode *inode, struct file *file);
 static int kvm_close(struct inode *inode, struct file *file);
 static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
+
+// SYNCHRONIZATION
+static DEFINE_RWLOCK(rw_lock);
 
 dev_t dev = 0;
 static struct class *kvm_class;
@@ -55,6 +59,8 @@ static int kvm_close(struct inode *inode, struct file *file)
 static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     struct InputOutput IO;
+    unsigned long flags;
+    char *key;
     switch(cmd) {
         case INSERT:
             printk(KERN_INFO "Inserting entry to storage.\n");
@@ -64,12 +70,15 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 break;
             }
             
+            write_lock_irqsave(&rw_lock, flags);
             IO.status = kvm_insert(IO.kvp);
 
             if(copy_to_user((struct InputOutput *) arg, &IO, sizeof(IO)))
             {
                 printk(KERN_ERR "ERROR: Successful INSERT, but can not return value to user.\n");
-            }            
+            }
+
+            write_unlock_irqrestore(&rw_lock, flags);
             break;
         case LOOKUP:
             printk(KERN_INFO "Looking for entry in storage.\n");
@@ -79,21 +88,28 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 break;
             }
             
-            char *key = IO.kvp->key;
-            
-            IO.kvp = kvm_lookup(key);
-
-            if (IO.kvp->value == NULL) {
+            read_lock_irqsave(&rw_lock, flags);
+            if (IO.kvp->key == NULL) {
+                printk(KERN_INFO "ERROR: No value of key.");
                 IO.status = -1;
             } else {
-                IO.status = 0;
+                key = IO.kvp->key;
+
+                IO.kvp = kvm_lookup(key);
+
+                if (IO.kvp == NULL) {
+                    IO.status = -1;
+                } else {
+                    IO.status = 0;
+                }
             }
 
             if(copy_to_user((struct InputOutput *) arg, &IO, sizeof(IO)))
             {
                 printk(KERN_ERR "ERROR: Successful LOOKUP, but can not return value to user.\n");
             }     
-            
+
+            read_unlock_irqrestore(&rw_lock, flags);            
             break;
 		case REMOVE:
 			printk(KERN_INFO "Removing entry from storage.");
@@ -103,12 +119,28 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 break;
             }
 
-            IO.status = kvm_remove(IO.kvp->key);
+            write_lock_irqsave(&rw_lock, flags);
+            if (IO.kvp == NULL) {
+                printk(KERN_INFO "ERROR: No value of key.");
+                IO.status = -1;
+            } else {
+                key = IO.kvp->key;
 
+                IO.kvp = kvm_remove(key);
+
+                if (IO.kvp == NULL) {
+                    IO.status = -1;
+                } else {
+                    IO.status = 0;
+                }
+            }
+            
             if(copy_to_user((struct InputOutput *) arg, &IO, sizeof(IO)))
             {
                 printk(KERN_ERR "ERROR: Successful REMOVE, but can not return value to user.\n");
             }
+
+            write_unlock_irqrestore(&rw_lock, flags);
 			break;
         default: 
             printk(KERN_ERR "ERROR: Unknown command.\n");
@@ -131,7 +163,7 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
  */
 static int __init kvm_ioctl_init(void)
 {
-    // Initialize key value store
+    // Initialize key value store and receieve.
     kvm_init();
 
     // Allocate major number
@@ -175,6 +207,7 @@ static int __init kvm_ioctl_init(void)
  */
 static void __exit kvm_exit(void)
 {
+    // SEND ALL DATA AND FREE BUCKETS.
 	device_destroy(kvm_class, dev);
     class_destroy(kvm_class);
     cdev_del(&kvm_cdev);

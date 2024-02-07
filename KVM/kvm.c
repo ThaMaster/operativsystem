@@ -1,14 +1,15 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 
 #include "kvm_ioctl.h"
 #include "kvm.h"
 
 uint8_t kvm_hash(const char key[]);
 int kvm_init(void);
-struct KeyValuePair *kvm_lookup(const char[]);
-struct KeyValuePair *kvm_remove(const char[]);
+struct KeyValuePair *kvm_lookup(const char *);
+struct KeyValuePair *kvm_remove(const char *);
 int kvm_insert(struct KeyValuePair *);
 
 static struct Bucket **buckets;
@@ -36,20 +37,26 @@ int kvm_init()
 /**
  * Function: kvm_lookup
  * -------------------------
- * 
+ * Lookup function for the hashmap. 
+ *
+ * key: key of key value pair to look for.
+ *
+ * returns: struct KeyValuePair * on success
+ *          NULL otherwise
  */
-struct KeyValuePair *kvm_lookup(const char key[])
+struct KeyValuePair *kvm_lookup(const char *key)
 {
     if (buckets == NULL) {
         printk(KERN_ERR "ERROR: Key value store has not been initialized.");
         return NULL;
     }
 
-    printk(KERN_INFO "kvm_lookup reached.");
+    printk(KERN_INFO "kvm_lookup reached with key: \"%s\"", key);
 
     uint8_t hashed_key = kvm_hash(key);
     struct Bucket *bucket = buckets[hashed_key];
     if (bucket != NULL) {
+        printk(KERN_INFO "Comparing \"%s\" and \"%s\".", bucket->value->key, key);
         while (strcmp(bucket->value->key, key)) {
             if (bucket->next != NULL) {
                 bucket = bucket->next;
@@ -57,8 +64,9 @@ struct KeyValuePair *kvm_lookup(const char key[])
                 printk(KERN_INFO "Unable to find KeyValuePair in bucket.");
                 return NULL;
             }
+            printk(KERN_INFO "Comparing \"%s\" and \"%s\".", bucket->value->key, key);
         }
-        printk(KERN_INFO "SUCCESS: Returning value from lookup");
+        printk(KERN_INFO "SUCCESS: Returning value from lookup with key: \"%s\".", key);
         return bucket->value;
     }
 
@@ -69,38 +77,47 @@ struct KeyValuePair *kvm_lookup(const char key[])
 /**
  * Function: kvm_remove
  * -------------------------
- * 
+ * Remove function for the hashmap.
+ *
+ * key: key of value to remove.
+ *
+ * returns: struct KeyValuePair * on success
+ *          NULL otherwise
  */
-struct KeyValuePair *kvm_remove(const char key[])
+struct KeyValuePair *kvm_remove(const char *key)
 {
     if (buckets == NULL) {
         printk(KERN_ERR "ERROR: Key value store has not been initialized.");
         return NULL;
     }
+    
+    usleep_range(1000, 1500);
 
     uint8_t hashed_key = kvm_hash(key);
 
     struct Bucket *prev_bucket;
     struct Bucket *curr_bucket = buckets[hashed_key];
     if(curr_bucket != NULL) {
+        // Find the KeyValuePair from the key
         while(strcmp(curr_bucket->value->key, key)) {
             if(curr_bucket->next != NULL) {
                 prev_bucket = curr_bucket;
                 curr_bucket = curr_bucket->next;
             } else {
-                printk(KERN_INFO "Unable to find the element to remove.");
+                printk(KERN_INFO "Unable to find the element with key: \"%s\".", key);
                 return NULL;
             }
         }
         
+        // Check if the desired bucket is the first in the list
         if (prev_bucket != NULL) {
             prev_bucket->next = curr_bucket->next;
         } else {
-            buckets[hashed_key] = NULL;
+            buckets[hashed_key] = curr_bucket->next;
         }
         struct KeyValuePair *res = curr_bucket->value;
         kfree(curr_bucket);
-        printk(KERN_INFO "SUCCESS: Removed bucket successfully!");
+        printk(KERN_INFO "SUCCESS: Removed bucket successfully with key: \"%s\".", key);
 
         return res;
     }
@@ -112,7 +129,13 @@ struct KeyValuePair *kvm_remove(const char key[])
 /**
  * Function: kvm_insert
  * -------------------------
+ * Insert function for the hashmap. Hashes the key and inserts a key value pair
+ * into the coresponding bucket.
  * 
+ * kvp: Pointer to the KeyValuePair to be inserted.
+ *
+ * returns: 0 on success
+ *          -1 otherwise
  */
 int kvm_insert(struct KeyValuePair *kvp)
 {
@@ -120,7 +143,7 @@ int kvm_insert(struct KeyValuePair *kvp)
         printk(KERN_ERR "ERROR: Key value store has not been initialized.");
         return -1;
     }
-    printk(KERN_INFO "kvm_insert reached.");
+    printk(KERN_INFO "kvm_insert reached, key: \"%s\".", kvp->key);
 
     uint8_t hashed_key = kvm_hash(kvp->key);
     struct Bucket *last_bucket = buckets[hashed_key];
@@ -178,4 +201,4 @@ uint8_t kvm_hash(const char key[])
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Christoffer Nordlander, Ludvig Larsson");
 MODULE_DESCRIPTION("A module that provides a key-value store like functionality.\n");
-MODULE_VERSION("0.1");
+MODULE_VERSION("0.3");

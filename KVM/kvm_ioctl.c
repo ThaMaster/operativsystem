@@ -64,16 +64,18 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     switch(cmd) {
         case INSERT:
             printk(KERN_INFO "Inserting entry to storage.\n");
-            if(copy_from_user(&IO, (struct InputOutput *) arg, sizeof(arg)))
+            if(copy_from_user(&IO, (struct InputOutput *) arg, sizeof(IO)))
             {
                 printk(KERN_ERR "ERROR: Cannot copy FROM user arguments.\n");
                 break;
             }
+            // printk(KERN_INFO "key: \"%s\"", (char *)IO.kvp->key);
+            // printk(KERN_INFO "value: \"%s\"", (char *)IO.kvp->value);
             
             write_lock_irqsave(&rw_lock, flags);
             IO.status = kvm_insert(IO.kvp);
 
-            if(copy_to_user((struct InputOutput *) arg, &IO, sizeof(IO)))
+            if(copy_to_user((void *) arg, &IO, sizeof(struct InputOutput)))
             {
                 printk(KERN_ERR "ERROR: Successful INSERT, but can not return value to user.\n");
             }
@@ -82,7 +84,7 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
         case LOOKUP:
             printk(KERN_INFO "Looking for entry in storage.\n");
-            if(copy_from_user(&IO, (struct InputOutput *) arg, sizeof(arg)))
+            if(copy_from_user(&IO, (struct InputOutput *) arg, sizeof(IO)))
             {
                 printk(KERN_ERR "ERROR: Cannot copy FROM user arguments.\n");
                 break;
@@ -96,7 +98,6 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 key = IO.kvp->key;
 
                 IO.kvp = kvm_lookup(key);
-
                 if (IO.kvp == NULL) {
                     IO.status = -1;
                 } else {
@@ -113,7 +114,7 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 		case REMOVE:
 			printk(KERN_INFO "Removing entry from storage.");
-            if(copy_from_user(&IO, (struct InputOutput *) arg, sizeof(arg)))
+            if(copy_from_user(&IO, (struct InputOutput *) arg, sizeof(IO)))
             {
                 printk(KERN_ERR "ERROR: Cannot copy FROM user arguments.\n");
                 break;

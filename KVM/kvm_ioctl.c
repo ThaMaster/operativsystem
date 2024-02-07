@@ -1,4 +1,3 @@
-#include "kvm_ioctl.h"
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/ioctl.h>
@@ -6,7 +5,7 @@
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
 #include <linux/rwlock_types.h>
-#include "kvm.h"
+#include "kvm_ioctl.h"
 
 static int __init kvm_ioctl_init(void);
 static void __exit kvm_exit(void);
@@ -69,8 +68,6 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 printk(KERN_ERR "ERROR: Cannot copy FROM user arguments.\n");
                 break;
             }
-            // printk(KERN_INFO "key: \"%s\"", (char *)IO.kvp->key);
-            // printk(KERN_INFO "value: \"%s\"", (char *)IO.kvp->value);
             
             write_lock_irqsave(&rw_lock, flags);
             IO.status = kvm_insert(IO.kvp);
@@ -91,11 +88,11 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             }
             
             read_lock_irqsave(&rw_lock, flags);
-            if (IO.kvp->key == NULL) {
+            if (IO.key == NULL) {
                 printk(KERN_INFO "ERROR: No value of key.");
                 IO.status = -1;
             } else {
-                key = IO.kvp->key;
+                key = IO.key;
 
                 IO.kvp = kvm_lookup(key);
                 if (IO.kvp == NULL) {
@@ -121,11 +118,11 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             }
 
             write_lock_irqsave(&rw_lock, flags);
-            if (IO.kvp == NULL) {
+            if (IO.key == NULL) {
                 printk(KERN_INFO "ERROR: No value of key.");
                 IO.status = -1;
             } else {
-                key = IO.kvp->key;
+                key = IO.key;
 
                 IO.kvp = kvm_remove(key);
 

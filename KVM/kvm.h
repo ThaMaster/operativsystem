@@ -17,7 +17,6 @@ struct KeyValuePair
     void *value;
 };
 
-uint8_t kvm_hash(const char key[]);
 int kvm_init(void);
 struct KeyValuePair *kvm_lookup(const char[]);
 struct KeyValuePair *kvm_remove(const char[]);

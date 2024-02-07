@@ -1,57 +1,46 @@
-// gcc -std=c99 -Wall -o main.o main.c
-#include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
+// gcc -std=c99 -Wall -o singleEntryTest.o singleEntryTest.c
 #include <stdint.h>
 #include <stdlib.h>
-#include "kvm.h"
-#include "kvm_ioctl.h"
+#include <stdio.h>
+#include "kvm_interface.h"
+
 
 int main(void)
 {
-    int fd;
-    printf("\nOpening Driver\n");
-    fd = open("/dev/kvm", O_RDWR);
-    if(fd < 0) {
-        printf("Cannot open device file...\n");
-        return 0;
+    char *key = calloc(1, sizeof(char));
+    key = "1";
+    char *value = calloc(4, sizeof(char));
+    value = "Hej";
+    struct KeyValuePair *kvp;
+    int status;
+
+    kvp = kvs_lookup(key);
+    if(kvp != NULL) {
+        printf("Found value: %s\n", (char *)kvp->value);
+    } else {
+        printf("No value found!\n");
     }
 
-    printf("Inserting KeyValuePair.\n");
-    struct InputOutput insertIO;
-    struct KeyValuePair insertPair;
-    insertPair.key = "cringe";
-    insertPair.value = calloc(7, sizeof(char));
-    insertPair.value = "hejsan";
-    insertIO.kvp = &insertPair;
-
-    ioctl(fd, INSERT, (struct InputOutput *)&insertIO);
+    status = kvs_insert(key, value);
+    printf("Insert returned: %d\n", status);
     
-    printf("Looking up entry.\n");
-
-    struct InputOutput lookingIO;
-    struct KeyValuePair lookPair;
-    lookPair.key = "cringe";
-    lookPair.value = calloc(7, sizeof(char));
-    lookingIO.kvp = &lookPair;
-
-    ioctl(fd, LOOKUP, (struct InputOutput *)&lookingIO);
-    if(lookingIO.status >= 0)
-        printf("%s\n", (char *)lookingIO.kvp->value);
-
-    struct InputOutput removeIO;
-    struct KeyValuePair removePair;
-    removePair.key = "cringe";
-    removePair.value = calloc(7, sizeof(char));
-    removeIO.kvp = &removePair;
-
-    ioctl(fd, REMOVE, (struct InputOutput *)&removeIO);
-
-    if(removeIO.status >= 0)
-        printf("Removing element: %s\n", (char *)removeIO.kvp->value);
-
-    printf("Closing Driver\n");
-    close(fd);
+    kvp = kvs_lookup(key);
+    if(kvp != NULL) {
+        printf("Found value: %s\n", (char *)kvp->value);
+    } else {
+        printf("No value found!\n");
+    }
+    
+    char *rkey = calloc(1, sizeof(char));
+    rkey = "1";
+    status = kvs_remove(rkey);
+    printf("Remove returned: %d\n", status);
+    
+    kvp = kvs_lookup(key);
+    if(kvp != NULL) {
+        printf("Found value: %s\n", (char *)kvp->value);
+    } else {
+        printf("No value found!\n");
+    }
+    return 0;
 }

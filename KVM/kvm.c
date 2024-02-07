@@ -1,7 +1,6 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/slab.h>
-#include <linux/delay.h>
 
 #include "kvm_ioctl.h"
 #include "kvm.h"
@@ -91,8 +90,6 @@ struct KeyValuePair *kvm_remove(const char *key)
         return NULL;
     }
     
-    usleep_range(1000, 1500);
-
     uint8_t hashed_key = kvm_hash(key);
 
     struct Bucket *prev_bucket;
@@ -146,10 +143,10 @@ int kvm_insert(struct KeyValuePair *kvp)
     printk(KERN_INFO "kvm_insert reached, key: \"%s\".", kvp->key);
 
     uint8_t hashed_key = kvm_hash(kvp->key);
-    struct Bucket *last_bucket = buckets[hashed_key];
+    struct Bucket *current_bucket = buckets[hashed_key];
     struct Bucket *new_bucket;
 
-    if (last_bucket == NULL) {
+    if (current_bucket == NULL) {
 
         new_bucket = kcalloc(1, sizeof(struct Bucket), GFP_KERNEL);
         if (new_bucket == NULL) {
@@ -161,8 +158,14 @@ int kvm_insert(struct KeyValuePair *kvp)
         buckets[hashed_key] = new_bucket;
     } else {
         // Loop to get to the last element in bucket list
-        while (last_bucket->next != NULL) {
-            last_bucket = last_bucket->next;
+        while (current_bucket != NULL) {
+            if (strcmp(current_bucket->value->key, kvp->key)) {
+                current_bucket = current_bucket->next;
+            } else {
+                current_bucket->value->value = kvp->value;
+                printk(KERN_INFO "SUCCESS: Updated entry successfully!");
+                return 0;
+            }
         }
 
         new_bucket = kcalloc(1, sizeof(struct Bucket), GFP_KERNEL);
@@ -172,7 +175,7 @@ int kvm_insert(struct KeyValuePair *kvp)
         }
 
         new_bucket->value = kvp;
-        last_bucket->next = new_bucket;
+        current_bucket->next = new_bucket;
     }
 
     printk(KERN_INFO "SUCCESS: Inserted entry successfully!");

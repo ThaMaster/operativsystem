@@ -23,46 +23,75 @@ int main(void)
         return 0;
     }
 
-    #pragma omp parallel for
-    for (int i = 0; i < 1; i++) {
-        //printf("Inserting KeyValuePair.\n");
+    char *n = calloc(1, sizeof(char));
+    n = "1";
+    struct InputOutput *insertIO = createIO(n, 1, "eat my shorts", strlen("eat my shorts"));
 
-        char *n = calloc(1, sizeof(char));
-        n = "1";
-        struct InputOutput *insertIO = createIO(n, 1, "eat my shorts", strlen("eat my shorts"));
+    printf("Inserting key: \"%s\"\n", insertIO->kvp->key);
+    ioctl(fd, INSERT, (struct InputOutput *)insertIO);
+    printf("Insert returned: %d.\n", insertIO->status);
 
-        printf("Inserting key: \"%s\"\n", insertIO->kvp->key);
-        ioctl(fd, INSERT, (struct InputOutput *)insertIO);
-        printf("(%d) Insert returned: %d.\n", i, insertIO->status);
+    char *n1 = calloc(1, sizeof(char));
+    n1 = "2";
+    struct InputOutput *insertIO1 = createIO(n1, 1, "test", strlen("test"));
 
-        char *l = "1";
-        struct InputOutput *lookIO = createIO(l, 1, "bruh", strlen("eat my shorts"));
-        ioctl(fd, LOOKUP, (struct InputOutput *)lookIO);
-        printf("(%d) Lookup returned: %d.\n", i, lookIO->status);
-        if(lookIO->status >= 0)
-        {
-            printf("Found value!\n");
-            printf("Value:  %s.\n", (char *)lookIO->kvp->value);
-        } else {
-            printf("No value!\n");
-        }
+    printf("Inserting key: \"%s\"\n", insertIO1->kvp->key);
+    ioctl(fd, INSERT, (struct InputOutput *)insertIO1);
+    
+    char *r = "1";
+    struct InputOutput *removeIO = createIO(r, 1, "eat my shorts", strlen("eat my shorts"));
+    ioctl(fd, REMOVE, (struct InputOutput *)removeIO);
+    printf("Remove returned: %d.\n", removeIO->status);
 
-        char *r = "1";
-        struct InputOutput *removeIO = createIO(r, 1, "eat my shorts", strlen("eat my shorts"));
-        ioctl(fd, REMOVE, (struct InputOutput *)removeIO);
-        printf("(%d) Remove returned: %d.\n", i, removeIO->status);
+    char *r1 = "1";
+    struct InputOutput *removeIO1 = createIO(r1, 1, "eat my shorts", strlen("eat my shorts"));
+    ioctl(fd, REMOVE, (struct InputOutput *)removeIO1);
+    printf("Remove returned: %d.\n", removeIO1->status);
 
-        struct InputOutput *lookIO2 = createIO(l, 1, "bruh", strlen("eat my shorts"));
-        ioctl(fd, LOOKUP, (struct InputOutput *)lookIO2);
-        printf("(%d) Lookup returned: %d.\n", i, lookIO->status);
-        if(lookIO2->status >= 0)
-        {
-            printf("Found value!\n");
-            printf("Found value:  %s.\n", (char *)lookIO2->kvp->value);
-        } else {
-            printf("No value!\n");
-        }
-    }
+
+    // #pragma omp parallel for
+    // for (int i = 0; i < 3; i++) {
+    //     char *n = calloc(1, sizeof(char));
+    //     n = "1";
+    //     struct InputOutput *insertIO = createIO(n, 1, "eat my shorts", strlen("eat my shorts"));
+
+    //     printf("Inserting key: \"%s\"\n", insertIO->kvp->key);
+    //     ioctl(fd, INSERT, (struct InputOutput *)insertIO);
+    //     printf("(%d) Insert returned: %d.\n", i, insertIO->status);
+
+    //     char *l = "1";
+    //     struct InputOutput *lookIO = createIO(l, 1, "bruh", strlen("eat my shorts"));
+    //     ioctl(fd, LOOKUP, (struct InputOutput *)lookIO);
+    //     printf("(%d) Lookup returned: %d.\n", i, lookIO->status);
+    //     if(lookIO->status >= 0)
+    //     {
+    //         printf("Found value!\n");
+    //         printf("Value:  %s.\n", (char *)lookIO->kvp->value);
+    //     } else {
+    //         printf("No value!\n");
+    //     }
+    // }
+
+    // #pragma omp parallel for 
+    // for (int i = 0; i < 3; i++) {
+    //     char *l = "1";
+    //     char *r = "1";
+    //     struct InputOutput *removeIO = createIO(r, 1, "eat my shorts", strlen("eat my shorts"));
+    //     ioctl(fd, REMOVE, (struct InputOutput *)removeIO);
+    //     printf("(%d) Remove returned: %d.\n", i, removeIO->status);
+
+    //     struct InputOutput *lookIO2 = createIO(l, 1, "bruh", strlen("eat my shorts"));
+    //     ioctl(fd, LOOKUP, (struct InputOutput *)lookIO2);
+    //     printf("(%d) Lookup returned: %d.\n", i, lookIO2->status);
+    //     if(lookIO2->status >= 0)
+    //     {
+    //         printf("Found value!\n");
+    //         printf("Found value:  %s.\n", (char *)lookIO2->kvp->value);
+    //     } else {
+    //         printf("No value!\n");
+    //     }
+
+    // }
     close(fd);
 }
 

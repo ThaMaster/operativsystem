@@ -7,7 +7,6 @@ struct InputOutput
 {
     struct KeyValuePair *kvp;
     int status;
-    char *key;
 };
 
 #endif

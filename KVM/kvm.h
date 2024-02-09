@@ -14,13 +14,15 @@ struct Bucket
 struct KeyValuePair
 {
     char *key;
+    int key_size;
     void *value;
+    int value_size;
 };
 
 int kvm_init(void);
-struct KeyValuePair *kvm_lookup(const char[]);
-struct KeyValuePair *kvm_remove(const char[]);
-int kvm_insert(struct KeyValuePair *);
+struct KeyValuePair *kvm_lookup(const char *);
+struct KeyValuePair *kvm_remove(const char *);
+int kvm_insert(char* key, int key_size, void* value, int value_size);
 void free_bucket(struct Bucket *);
 
 #endif

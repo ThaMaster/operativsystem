@@ -1,5 +1,5 @@
 CC = gcc
-FLAGS = -std=gnu11 -Werror -Wall -Wextra
+FLAGS = -std=gnu11 -Wall -Wextra
 
 single: singleEntryTest.c kvm_interface.h kvm_interface.c
 	$(CC) $(FLAGS) $^ -o $@

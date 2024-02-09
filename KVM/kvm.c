@@ -7,9 +7,6 @@
 
 uint8_t kvm_hash(const char key[]);
 int kvm_init(void);
-struct KeyValuePair *kvm_lookup(const char *);
-struct KeyValuePair *kvm_remove(const char *);
-int kvm_insert(struct KeyValuePair *);
 
 static struct Bucket **buckets;
 
@@ -134,17 +131,24 @@ struct KeyValuePair *kvm_remove(const char *key)
  * returns: 0 on success
  *          -1 otherwise
  */
-int kvm_insert(struct KeyValuePair *kvp)
+int kvm_insert(char* key, int key_size, void* value, int value_size)
 {
+    
     if (buckets == NULL) {
         printk(KERN_ERR "ERROR: Key value store has not been initialized.");
         return -1;
     }
-    printk(KERN_INFO "kvm_insert reached, key: \"%s\".", kvp->key);
+    printk(KERN_INFO "kvm_insert reached, key: \"%s\".", key);
 
-    uint8_t hashed_key = kvm_hash(kvp->key);
+    uint8_t hashed_key = kvm_hash(key);
     struct Bucket *current_bucket = buckets[hashed_key];
     struct Bucket *new_bucket;
+    struct KeyValuePair *kvp = kcalloc(1, sizeof(struct KeyValuePair), GFP_KERNEL);
+    
+    kvp->key = key;
+    kvp->key_size = key_size;
+    kvp->value = value;
+    kvp->value_size = value_size;
 
     if (current_bucket == NULL) {
 
@@ -153,16 +157,16 @@ int kvm_insert(struct KeyValuePair *kvp)
             printk(KERN_ERR "ERROR: Unable to allocate memory for bucket.\n");
             return -1;
         }
-
+        
         new_bucket->value = kvp;
         buckets[hashed_key] = new_bucket;
     } else {
         // Loop to get to the last element in bucket list
         while (current_bucket != NULL) {
-            if (strcmp(current_bucket->value->key, kvp->key)) {
+            if (strcmp(current_bucket->value->key, key)) {
                 current_bucket = current_bucket->next;
             } else {
-                current_bucket->value->value = kvp->value;
+                current_bucket->value->value = value;
                 printk(KERN_INFO "SUCCESS: Updated entry successfully!");
                 return 0;
             }

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include "../kvm_ioctl.h"
 
@@ -20,7 +21,7 @@ int open_driver_fd(char *file);
  * returns: 0 on success
  *          -1 on error
  */
-int kvs_insert(char *key, void *value) 
+int kvs_insert(char *key, void *value, int value_size) 
 {
     int status;
 
@@ -32,14 +33,23 @@ int kvs_insert(char *key, void *value)
     struct InputOutput *IO = calloc(1, sizeof(struct InputOutput));
     struct KeyValuePair *kvp = calloc(1, sizeof(struct KeyValuePair));
     kvp->key = key;
+    kvp->key_size = strlen(key)*sizeof(char);
     kvp->value = value;
+    kvp->value_size = value_size;
     IO->kvp = kvp;
+
+
+    printf("size of value to add: %d\n", kvp->value_size);
+
     
     ioctl(fd, INSERT, (struct InputOutput *)IO);
     status = IO->status;
 
     close(fd);
+    free(kvp);
     free(IO);
+    free(key);
+    free(value);
 
     return status;
 }
@@ -63,23 +73,18 @@ int kvs_remove(char *key)
     }
     
     struct InputOutput *IO = calloc(1, sizeof(struct InputOutput));
-    IO->key = key;
+    struct KeyValuePair *kvp = calloc(1, sizeof(struct KeyValuePair));
+    kvp->key = key;
+    kvp->key_size = strlen(key)*sizeof(char);
+    IO->kvp = kvp;
 
     ioctl(fd, REMOVE, (struct InputOutput *)IO);
     if (IO->status < 0) {
         close(fd);
-        free(IO);
         return -1;
     }
 
     close(fd);
-
-    free(IO->kvp->key);
-    free(IO->kvp->value);
-    free(IO->kvp);
-    free(key);
-    free(IO);
-
     return 0;
 }
 
@@ -96,24 +101,26 @@ int kvs_remove(char *key)
  */
 struct KeyValuePair *kvs_lookup(char *key) 
 {
-    struct KeyValuePair *kvp = NULL;
-    
     int fd = open_driver_fd("/dev/kvm");
     if (fd == -1) {
         return NULL;
     }
 
     struct InputOutput *IO = calloc(1, sizeof(struct InputOutput));
-    IO->key = key;
-
+    struct KeyValuePair *kvp = calloc(1, sizeof(struct KeyValuePair));
+    kvp->key = key;
+    kvp->key_size = strlen(key)*sizeof(char);
+    IO->kvp = kvp;
+    
     ioctl(fd, LOOKUP, (struct InputOutput *)IO);
-    kvp = IO->kvp;
+    printf("Lookup returned: %d\n", IO->status);
+
+    struct KeyValuePair *res_kvp = calloc(1, sizeof(struct KeyValuePair));
+    res_kvp = IO->kvp;
     
     close(fd);
-    free(key);
-    free(IO);
-    
-    return kvp;
+
+    return res_kvp;
 }
 
 /**

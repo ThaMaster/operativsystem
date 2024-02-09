@@ -31,7 +31,14 @@ static struct file_operations fops =
 /**
  * Function: kvm_open
  * -------------------------
- * 
+ * Function that is called when the device file
+ * is opens.
+ *
+ * inode:
+ * file: 
+ *
+ * returns: 0 on success
+ *          -1 otherwise
  */
 static int kvm_open(struct inode *inode, struct file *file)
 {
@@ -42,7 +49,14 @@ static int kvm_open(struct inode *inode, struct file *file)
 /**
  * Function: kvm_close
  * -------------------------
- * 
+ * Function that is called when the device file
+ * is closes.
+ *
+ * inode:
+ * file: 
+ *
+ * returns: 0 on success
+ *          -1 otherwise
  */
 static int kvm_close(struct inode *inode, struct file *file)
 {
@@ -53,7 +67,11 @@ static int kvm_close(struct inode *inode, struct file *file)
 /**
  * Function: kvm_ioctl
  * -------------------------
+ * Handles the device driver functionality such as
+ * inserts, removes and lookups.
  * 
+ * returns: 0 on success
+ *          -1 otherwise
  */
 static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -130,7 +148,9 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                     IO.status = -1;
                 } else {
                     IO.status = 0;
+                    printk(KERN_INFO "removing at %p", (void *)arg);
                 }
+
             }
             
             if(copy_to_user((struct InputOutput *) arg, &IO, sizeof(IO)))

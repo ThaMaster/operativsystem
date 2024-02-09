@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <omp.h>
-#include "kvm.h"
-#include "kvm_ioctl.h"
+#include "../kvm.h"
+#include "../kvm_ioctl.h"
 #include <string.h>
 
 struct InputOutput *createIO(char* key, int kSize, void* value, int vSize);

@@ -5,8 +5,10 @@
 // TODO REMOVE KVP AND USE PURELY VALUE AND KEY.
 struct InputOutput
 {
-    struct KeyValuePair *kvp;
-    int status;
+    char *key;
+    void *value;
+    int key_size;
+    int value_size;
 };
 
 #endif

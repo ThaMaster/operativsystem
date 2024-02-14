@@ -14,8 +14,8 @@ struct Bucket
 struct KeyValuePair
 {
     char *key;
-    int key_size;
     void *value;
+    int key_size;
     int value_size;
 };
 

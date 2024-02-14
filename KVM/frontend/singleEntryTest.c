@@ -14,7 +14,7 @@ int main(void)
 
     // Insert
     char *value = calloc(4, sizeof(char));
-    strcpy(value, "Hej");
+    strcpy(value, "put");
     int value_size = strlen(value)*sizeof(char);
 
     status = kvs_insert(key, value, value_size);
@@ -23,22 +23,23 @@ int main(void)
     // Lookup
     char *lkey = calloc(2, sizeof(char));
     strcpy(lkey, "1");
-    printf("before lookup!\n");
-    struct KeyValuePair *kvp = calloc(1, sizeof(struct KeyValuePair));
-    kvp = kvs_lookup(lkey);
-    printf("after lookup!\n");
+    struct InputOutput *IO = calloc(1, sizeof(struct InputOutput));
+    IO = kvs_lookup(lkey);
+    printf("Lookup returned: %d\n", IO == NULL ? -1 : 0);
 
-    if (kvp != NULL) {
-        // TODO: SEG FAULT WHEN TRYING TO CHECK NULLILLITY.
-        // MAY BE BECAUSE OF KERNEL SPACE PERMISSOIN????????
-        if (kvp->key != NULL) {
-            printf("Key: %s\n", kvp->key);
-            fflush(stdout);
-            if (kvp->value != NULL) {
-                
-            }
-        }
-    }
-
+    // // Remove
+    // char *rkey = calloc(2, sizeof(char));
+    // strcpy(rkey, "1");
+    // status = kvs_remove(rkey);
+    // printf("Remove returned: %d\n", status);
+    
+    
+    // // Lookup 2
+    // char *lkey2 = calloc(2, sizeof(char));
+    // strcpy(lkey2, "1");
+    // IO = kvs_lookup(lkey2);
+    // printf("Lookup returned: %d\n", IO->status);
+    
+    
     return 0;
 }

@@ -62,7 +62,7 @@ struct KeyValuePair *kvm_lookup(const char *key)
             }
             printk(KERN_INFO "Comparing \"%s\" and \"%s\".", bucket->value->key, key);
         }
-        printk(KERN_INFO "SUCCESS: Returning value from lookup with key: \"%s\".", key);
+        printk(KERN_INFO "SUCCESS: Returning value: \"%s\" from lookup with key: \"%s\".", (char*)bucket->value->value, key);
         return bucket->value;
     }
 

@@ -76,128 +76,145 @@ static int kvm_close(struct inode *inode, struct file *file)
 static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     struct InputOutput *IO = kcalloc(1, sizeof(struct InputOutput), GFP_KERNEL);
-    struct KeyValuePair *kvp;
     char *key;
     void *value;
+    int status;
     unsigned long flags;
+    
     switch(cmd) {
         case INSERT:
+            status = 0;
             printk(KERN_INFO "Inserting entry to storage.\n");
-            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(IO)))
+            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput)))
             {
                 printk(KERN_ERR "ERROR: Cannot copy IO from user arguments.\n");
-                break;
+                return -1;
             }
 
-            key = kcalloc(1, IO->kvp->key_size, GFP_KERNEL);
-            if (copy_from_user(key, IO->kvp->key, sizeof(key))) {
+            key = kcalloc(1, IO->key_size, GFP_KERNEL);
+            if (copy_from_user(key, IO->key, sizeof(key))) {
                 printk(KERN_ERR "ERROR: Cannot copy key from user arguments.\n");
-                break;
+                return -1;
             }
 
-            value = kcalloc(1, IO->kvp->value_size, GFP_KERNEL);
-            if (copy_from_user(value, IO->kvp->value, sizeof(value))) {
+            printk(KERN_INFO "Value_size: %d, key_size: %d\n", IO->value_size, IO->key_size);
+
+            value = kcalloc(1, IO->value_size, GFP_KERNEL);
+            if (copy_from_user(value, IO->value, sizeof(value))) {
                 printk(KERN_ERR "ERROR: Cannot copy value from user arguments.\n");
-                break;
+                return -1;
             }
 
             write_lock_irqsave(&rw_lock, flags);
-            IO->status = kvm_insert(key, IO->kvp->key_size, value, IO->kvp->value_size);
-
-            if(copy_to_user((void *) arg, IO, sizeof(struct InputOutput)))
-            {
-                printk(KERN_ERR "ERROR: Successful INSERT, but can not return value to user.\n");
+            int status = kvm_insert(key, IO->key_size, value, IO->value_size);
+            write_unlock_irqrestore(&rw_lock, flags);
+            
+            if(status != 0) {
+                return -1;   
             }
 
-            write_unlock_irqrestore(&rw_lock, flags);
             break;
         case LOOKUP:
-
+            status = 0;
             printk(KERN_INFO "Looking for entry in storage.\n");
-            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(IO)))
+            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput)))
             {
                 printk(KERN_ERR "ERROR: Cannot copy IO from user arguments.\n");
-                break;
+                return -1;
             }
             
-            key = kcalloc(1, IO->kvp->key_size, GFP_KERNEL);
-            printk(KERN_INFO "Key_size: %d\n", IO->kvp->key_size);
-            printk(KERN_INFO "Key: %s\n", IO->kvp->key);
-            if (copy_from_user(key, IO->kvp->key, sizeof(key))) {
+            key = kcalloc(1, IO->key_size, GFP_KERNEL);
+            if (copy_from_user(key, IO->key, sizeof(key))) {
                 printk(KERN_ERR "ERROR: Cannot copy key from user arguments.\n");
-                break;
+                return -1;
             }
 
             read_lock_irqsave(&rw_lock, flags);
             if (key == NULL) {
-                printk(KERN_INFO "ERROR: No value of key.");
-                IO->status = -1;
+                printk(KERN_ERR "ERROR: No value of key.");
+                status = -1;
             } else {
-                kvp = kvm_lookup(key);
-                IO->kvp = kvp;
+                struct KeyValuePair *kvp = kvm_lookup(key);
                 
-                if (IO->kvp == NULL) {
-                    IO->status = -1;
-                } else {
-                    IO->status = 0;
+                if (kvp == NULL) {
+                    printk(KERN_ERR "ERROR: No value with key: %s", key);
+                    status = -1;
+                } else {    
+                    IO->value = kvp->value;
+                    IO->value_size = kvp->value_size;
+                    IO->key = kvp->key;
                 }
+            }    
+            read_unlock_irqrestore(&rw_lock, flags);            
+            
+            if(status != 0) {
+                return -1;
             }
 
-            if(copy_to_user((struct InputOutput *) arg, IO, sizeof(IO)))
+            if(copy_to_user(((struct InputOutput *)arg)->key, IO->key, IO->key_size))
             {
                 printk(KERN_ERR "ERROR: Successful LOOKUP, but can not return value to user.\n");
-            }     
-
-            read_unlock_irqrestore(&rw_lock, flags);            
-            break;
-		case REMOVE:
-			printk(KERN_INFO "Removing entry from storage.");
-            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(IO)))
-            {
-                printk(KERN_ERR "ERROR: Cannot copy FROM user arguments.\n");
-                break;
+                return -1;
             }
 
-            key = kcalloc(1, IO->kvp->key_size, GFP_KERNEL);
-            printk(KERN_INFO "Key_size: %d\n", IO->kvp->key_size);
-            printk(KERN_INFO "Key: %s\n", IO->kvp->key);
-            if (copy_from_user(key, IO->kvp->key, sizeof(key))) {
+            if(copy_to_user(((struct InputOutput *)arg)->value, IO->value, IO->value_size))
+            {
+                printk(KERN_ERR "ERROR: Successful LOOKUP, but can not return value to user.\n");
+                return -1;
+            }      
+                
+            break;
+		case REMOVE:
+            status = 0;
+			printk(KERN_INFO "Removing entry from storage.");
+            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput)))
+            {
+                printk(KERN_ERR "ERROR: Cannot copy FROM user arguments.\n");
+                return -1;
+            }
+
+            key = kcalloc(1, IO->key_size, GFP_KERNEL);
+            printk(KERN_INFO "Key_size: %d\n", IO->key_size);
+            printk(KERN_INFO "Key: %s\n", IO->key);
+            if (copy_from_user(key, IO->key, sizeof(key))) {
                 printk(KERN_ERR "ERROR: Cannot copy key from user arguments.\n");
-                break;
+                return -1;
             }
 
             write_lock_irqsave(&rw_lock, flags);
             if (key == NULL) {
                 printk(KERN_INFO "ERROR: No value of key.");
-                IO->status = -1;
+                status = -1;
             } else {
-                IO->kvp = kvm_remove(key);
+                struct KeyValuePair *kvp = kvm_remove(key);
 
-                if (IO->kvp == NULL) {
-                    IO->status = -1;
+                if (kvp == NULL) {
+                    status = -1;
                 } else {
-                    IO->status = 0;
                     printk(KERN_INFO "removing at %p", (void *)arg);
+                    
+                    kfree(kvp->key);
+                    kfree(kvp->value);
+                    kfree(kvp);
                 }
-
             }
-            
-            if(copy_to_user((struct InputOutput *) arg, IO, sizeof(IO)))
-            {
-                printk(KERN_ERR "ERROR: Successful REMOVE, but can not return value to user.\n");
-            }
-
             write_unlock_irqrestore(&rw_lock, flags);
-			break;
+            
+            if(status != 0) {
+                return -1;
+            }
+			
+            break;
         default: 
             printk(KERN_ERR "ERROR: Unknown command.\n");
-            IO->status = -1;
-            if(copy_to_user((struct InputOutput *) arg, IO, sizeof(IO)))
+            if(copy_to_user((struct InputOutput *) arg, IO, sizeof(struct InputOutput)))
             {
                 printk(KERN_ERR "ERROR: Was not able to send error to user.\n");
             }
+            return -1;
     }
-    return 0;
+
+    return status;
 }
 
 /**

@@ -137,7 +137,7 @@ struct InputOutput *kvs_lookup(char *key)
 int open_driver_fd(char *file) 
 {
     int fd;
-    printf("\nOpening Driver\n");
+    // printf("\nOpening Driver\n");
     fd = open(file, O_RDWR);
     if(fd < 0) {
         printf("Error: Cannot open device file...\n");

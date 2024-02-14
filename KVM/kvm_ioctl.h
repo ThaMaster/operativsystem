@@ -2,9 +2,10 @@
 #define KVM_IOCTL_H
 
 #include "kvm.h"
-// TODO REMOVE KVP AND USE PURELY VALUE AND KEY.
+
 struct InputOutput
 {
+    // Add rw_lock to each bucket
     char *key;
     void *value;
     int key_size;

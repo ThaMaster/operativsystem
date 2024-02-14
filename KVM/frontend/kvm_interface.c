@@ -99,7 +99,7 @@ struct InputOutput *kvs_lookup(char *key)
     struct InputOutput *IO = calloc(1, sizeof(struct InputOutput));
     IO->key = key;
     IO->key_size = strlen(key)*sizeof(char);
-    IO->value = calloc(500, sizeof(char));
+    IO->value = calloc(1, sizeof(void *));
     
     if (ioctl(fd, LOOKUP, IO) != 0) {
         close(fd);

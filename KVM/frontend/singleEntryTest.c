@@ -5,7 +5,6 @@
 #include <string.h>
 #include "kvm_interface.h"
 
-
 int main(void)
 {
     char *key = calloc(2, sizeof(char));
@@ -16,7 +15,6 @@ int main(void)
     char *value = calloc(4, sizeof(char));
     strcpy(value, "put");
     int value_size = strlen(value)*sizeof(char);
-
     status = kvs_insert(key, value, value_size);
     printf("Insert returned: %d\n", status);
     

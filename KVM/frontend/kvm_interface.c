@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include "../kvm_ioctl.h"
+#include "kvm_interface.h"
 
 int open_driver_fd(char *file);
 
@@ -35,11 +36,12 @@ int kvs_insert(char *key, void *value, int value_size)
     IO->value_size = value_size;
 
     if (ioctl(fd, INSERT, IO) != 0) {
+        free(IO);
         close(fd);
         return -1;
     }
 
-    // close(fd);
+    close(fd);
     // free(IO);
     // free(key);
     // free(value);
@@ -70,6 +72,7 @@ int kvs_remove(char *key)
     IO->key_size = strlen(key);
 
     if (ioctl(fd, REMOVE, IO) != 0){
+        free(IO);
         close(fd);
         return -1;
     }
@@ -102,6 +105,8 @@ struct InputOutput *kvs_lookup(char *key)
     IO->value = calloc(1, sizeof(void *));
     
     if (ioctl(fd, LOOKUP, IO) != 0) {
+        free(IO->value);
+        free(IO);
         close(fd);
         return NULL;
     }
@@ -123,6 +128,61 @@ struct InputOutput *kvs_lookup(char *key)
 
     return IO;
 }
+
+/**
+ * Function: kvs_dump
+ * -------------------------
+ * Attempts to extract all the data that is currently
+ * loaded in the KVS.
+ *
+ * currently lodade *
+ *
+ * returns: struct Dump * on success
+ *          NULL otherwise
+ */
+struct Dump *kvs_dump()
+{
+    int fd = open_driver_fd("/dev/kvm");
+    if (fd == -1) {
+        return NULL;
+    }
+
+    struct Dump *dumped_values = NULL;
+    struct Dump *curr_dump = NULL;
+    struct Dump *new_dump = NULL;
+
+    struct InputOutput* curr_kvp = calloc(1, sizeof(struct InputOutput));
+    curr_kvp->key = calloc(1024, sizeof(char));
+    curr_kvp->value = calloc(1024, sizeof(char));
+
+    int status = ioctl(fd, DUMP, curr_kvp);
+    while(status == 0) 
+    {
+        if (dumped_values == NULL) {
+            dumped_values = calloc(1, sizeof(struct Dump));
+            dumped_values->kvp = curr_kvp;
+            curr_dump = dumped_values;
+        } else {
+            new_dump = calloc(1, sizeof(struct Dump));
+            new_dump->kvp = curr_kvp;
+
+            curr_dump->next = new_dump;
+            curr_dump = curr_dump->next;
+        }
+        curr_kvp = calloc(1, sizeof(struct InputOutput));
+        curr_kvp->key = calloc(1024, sizeof(char));
+        curr_kvp->value = calloc(1024, sizeof(char));
+        status = ioctl(fd, DUMP, curr_kvp);
+    }
+    if (status == -1) {
+        free(dumped_values);
+        close(fd);
+        return NULL;
+    }
+
+    close(fd);
+    return dumped_values;
+} 
 
 /**
  * Function: open_driver_fd

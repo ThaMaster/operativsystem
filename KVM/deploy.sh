@@ -3,4 +3,4 @@ make
 cd ./frontend/
 make
 cd ..
-./frontend/single
+sudo ./frontend/single

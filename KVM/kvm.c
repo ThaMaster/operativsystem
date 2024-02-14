@@ -5,6 +5,8 @@
 #include "kvm_ioctl.h"
 #include "kvm.h"
 
+#define NUM_BUCKETS 256
+
 uint8_t kvm_hash(const char key[]);
 int kvm_init(void);
 
@@ -20,8 +22,7 @@ static struct Bucket **buckets;
  */
 int kvm_init() 
 {
-    // Init store table with 0-255 buckets each with a size of 2.
-    buckets = kcalloc(256, sizeof(struct KeyValuePair *), GFP_KERNEL);
+    buckets = kcalloc(NUM_BUCKETS, sizeof(struct KeyValuePair *), GFP_KERNEL);
     if (buckets == NULL) {
         printk(KERN_ERR "ERROR: Unable to allocate memory for the bucket.");
         return -1;
@@ -47,12 +48,12 @@ struct KeyValuePair *kvm_lookup(const char *key)
         return NULL;
     }
 
-    printk(KERN_INFO "kvm_lookup reached with key: \"%s\"", key);
+    // printk(KERN_INFO "kvm_lookup reached with key: \"%s\"", key);
 
     uint8_t hashed_key = kvm_hash(key);
     struct Bucket *bucket = buckets[hashed_key];
     if (bucket != NULL) {
-        printk(KERN_INFO "Comparing \"%s\" and \"%s\".", bucket->value->key, key);
+        // printk(KERN_INFO "Comparing \"%s\" and \"%s\".", bucket->value->key, key);
         while (strcmp(bucket->value->key, key)) {
             if (bucket->next != NULL) {
                 bucket = bucket->next;
@@ -60,7 +61,7 @@ struct KeyValuePair *kvm_lookup(const char *key)
                 printk(KERN_INFO "Unable to find KeyValuePair in bucket.");
                 return NULL;
             }
-            printk(KERN_INFO "Comparing \"%s\" and \"%s\".", bucket->value->key, key);
+            // printk(KERN_INFO "Comparing \"%s\" and \"%s\".", bucket->value->key, key);
         }
         printk(KERN_INFO "SUCCESS: Returning value: \"%s\" from lookup with key: \"%s\".", (char*)bucket->value->value, key);
         return bucket->value;
@@ -184,6 +185,31 @@ int kvm_insert(char* key, int key_size, void* value, int value_size)
 
     printk(KERN_INFO "SUCCESS: Inserted entry successfully!");
     return 0;
+}
+
+/**
+ * Function: kvm_dump
+ * -------------------------
+ * Dumps all the values currently stored in the
+ * KVS into the Dump structure, used for persistent
+ * storage outside the module.
+ *
+ * returns: struct Dump * on success
+ *          NULL otherwise
+ */
+struct KeyValuePair *kvm_dump()
+{
+    // Go throuh all buckets
+    for (int i = 0; i < NUM_BUCKETS; i++) {
+        struct Bucket *bucket = buckets[i];
+        
+        // Find next non NULL bucket
+        if (bucket != NULL) {
+            return kvm_lookup(bucket->value->key);
+        }
+    }
+
+    return NULL;
 }
 
 /**

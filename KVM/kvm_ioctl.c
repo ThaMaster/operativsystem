@@ -116,7 +116,7 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
         case LOOKUP:
             status = 0;
-            printk(KERN_INFO "Looking for entry in storage.\n");
+            // printk(KERN_INFO "Looking for entry in storage.\n");
             if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput)))
             {
                 printk(KERN_ERR "ERROR: Cannot copy IO from user arguments.\n");
@@ -143,6 +143,7 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                     IO->value = kvp->value;
                     IO->value_size = kvp->value_size;
                     IO->key = kvp->key;
+                    IO->key_size = kvp->key_size;
                 }
             }    
             read_unlock_irqrestore(&rw_lock, flags);            
@@ -204,6 +205,34 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 return -1;
             }
 			
+            break;
+        case DUMP:
+            status = 0;
+            struct KeyValuePair *kvp = kvm_dump();
+
+            if (kvp == NULL) {
+                return 1;
+            }
+
+            IO->value = kvp->value;
+            IO->value_size = kvp->value_size;
+            IO->key = kvp->key;
+            IO->key_size = kvp->key_size;
+
+
+            if(copy_to_user(((struct InputOutput *)arg)->key, IO->key, IO->key_size))
+            {
+                printk(KERN_ERR "ERROR: Successful LOOKUP, but can not return value to user.\n");
+                return -1;
+            }
+
+            if(copy_to_user(((struct InputOutput *)arg)->value, IO->value, IO->value_size))
+            {
+                printk(KERN_ERR "ERROR: Successful LOOKUP, but can not return value to user.\n");
+                return -1;
+            }
+            kvm_remove(kvp->key);
+            
             break;
         default: 
             printk(KERN_ERR "ERROR: Unknown command.\n");

@@ -5,6 +5,8 @@
 #define LOOKUP _IOWR('k', 'l', struct InputOutput *)
 #define REMOVE _IOWR('k', 'r', struct InputOutput *)
 #define DUMP _IOWR('k', 'd', struct Dump *)
+#define SETSPID _IOWR('k', 's', pid_t *)
+#define HASSPID _IOWR('k', 'h', void *)
 
 struct Bucket
 {

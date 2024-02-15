@@ -5,6 +5,10 @@
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
 #include <linux/rwlock_types.h>
+#include <linux/sched.h>
+#include <linux/signal.h>
+#include <linux/pid.h>
+#include <linux/delay.h>
 #include "kvm_ioctl.h"
 
 static int __init kvm_ioctl_init(void);
@@ -27,6 +31,8 @@ static struct file_operations fops =
     .unlocked_ioctl = kvm_ioctl,
     .release        = kvm_close,
 };
+
+struct pid *perpetual_daemon_pid = NULL;
 
 /**
  * Function: kvm_open
@@ -85,8 +91,7 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         case INSERT:
             status = 0;
             printk(KERN_INFO "Inserting entry to storage.\n");
-            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput)))
-            {
+            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput))) {
                 printk(KERN_ERR "ERROR: Cannot copy IO from user arguments.\n");
                 return -1;
             }
@@ -116,9 +121,8 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
         case LOOKUP:
             status = 0;
-            // printk(KERN_INFO "Looking for entry in storage.\n");
-            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput)))
-            {
+            printk(KERN_INFO "Looking for entry in storage.\n");
+            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput))) {
                 printk(KERN_ERR "ERROR: Cannot copy IO from user arguments.\n");
                 return -1;
             }
@@ -152,14 +156,12 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 return -1;
             }
 
-            if(copy_to_user(((struct InputOutput *)arg)->key, IO->key, IO->key_size))
-            {
+            if(copy_to_user(((struct InputOutput *)arg)->key, IO->key, IO->key_size)) {
                 printk(KERN_ERR "ERROR: Successful LOOKUP, but can not return value to user.\n");
                 return -1;
             }
 
-            if(copy_to_user(((struct InputOutput *)arg)->value, IO->value, IO->value_size))
-            {
+            if(copy_to_user(((struct InputOutput *)arg)->value, IO->value, IO->value_size)) {
                 printk(KERN_ERR "ERROR: Successful LOOKUP, but can not return value to user.\n");
                 return -1;
             }      
@@ -168,8 +170,7 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		case REMOVE:
             status = 0;
 			printk(KERN_INFO "Removing entry from storage.");
-            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput)))
-            {
+            if(copy_from_user(IO, (struct InputOutput *) arg, sizeof(struct InputOutput))) {
                 printk(KERN_ERR "ERROR: Cannot copy FROM user arguments.\n");
                 return -1;
             }
@@ -207,6 +208,7 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			
             break;
         case DUMP:
+            printk(KERN_INFO "Dumping storage!\n");
             status = 0;
             struct KeyValuePair *kvp = kvm_dump();
 
@@ -220,24 +222,40 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             IO->key_size = kvp->key_size;
 
 
-            if(copy_to_user(((struct InputOutput *)arg)->key, IO->key, IO->key_size))
-            {
+            if(copy_to_user(((struct InputOutput *)arg)->key, IO->key, IO->key_size)) {
                 printk(KERN_ERR "ERROR: Successful LOOKUP, but can not return value to user.\n");
                 return -1;
             }
 
-            if(copy_to_user(((struct InputOutput *)arg)->value, IO->value, IO->value_size))
-            {
+            if(copy_to_user(((struct InputOutput *)arg)->value, IO->value, IO->value_size)) {
                 printk(KERN_ERR "ERROR: Successful LOOKUP, but can not return value to user.\n");
                 return -1;
             }
             kvm_remove(kvp->key);
-            
+
             break;
+        case SETSPID:
+            if (perpetual_daemon_pid != NULL) {
+                return 1;
+            }
+
+            pid_t *pid = kcalloc(1, sizeof(pid_t), GFP_KERNEL);
+            if(copy_from_user(pid, (pid_t *) arg, sizeof(pid_t))) {
+                printk(KERN_ERR "ERROR: Cannot copy pid_t FROM user arguments.\n");
+                return -1;
+            }
+
+            perpetual_daemon_pid = pid_task(find_vpid(*pid), PIDTYPE_PID)->thread_pid;
+
+            printk(KERN_INFO "SUCCESS: Added pid: %d\n", *pid);
+            
+            kfree(pid);
+            return perpetual_daemon_pid == NULL ? -1 : 0;
+        case HASSPID:
+            return perpetual_daemon_pid == NULL ? 0 : 1;
         default: 
             printk(KERN_ERR "ERROR: Unknown command.\n");
-            if(copy_to_user((struct InputOutput *) arg, IO, sizeof(struct InputOutput)))
-            {
+            if(copy_to_user((struct InputOutput *) arg, IO, sizeof(struct InputOutput))) {
                 printk(KERN_ERR "ERROR: Was not able to send error to user.\n");
             }
             return -1;
@@ -249,7 +267,7 @@ static long kvm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /**
  * Function: kvm_ioctl_init
  * -------------------------
- * Initialize the lkm and kvs
+ * Initialize the module and the key-value store.
  * 
  * returns: 0 on success
  *          -1 on error
@@ -300,8 +318,19 @@ static int __init kvm_ioctl_init(void)
  */
 static void __exit kvm_exit(void)
 {
-    // SEND ALL DATA AND FREE BUCKETS.
-	device_destroy(kvm_class, dev);
+    if (perpetual_daemon_pid != NULL) {
+        kill_pid(perpetual_daemon_pid, SIGIO, 1);
+        
+        /*
+            TODO:
+                Daemon can not call kvs_dump when we wait here...
+                This must be fixed somehow.
+        */
+        
+        
+        msleep(3000);
+    }
+    device_destroy(kvm_class, dev);
     class_destroy(kvm_class);
     cdev_del(&kvm_cdev);
     unregister_chrdev_region(dev, 1);

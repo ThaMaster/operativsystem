@@ -5,7 +5,8 @@ struct Dump {
     struct Dump* next;
 };
 
+int init_module(void);
 int kvs_insert(char *key, void *value, int value_size); 
 int kvs_remove(char *key); 
-struct Dump *kvs_dump(); 
+int kvs_dump(); 
 struct InputOutput *kvs_lookup(char *key);
